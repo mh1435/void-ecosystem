@@ -24,7 +24,7 @@ void-ecosystem/
 ├── feature/
 │   ├── dashboard/                   # Supplies :app's home-screen grid UI (not its own APK)
 │   ├── theming/  terminal/  sysmonitor/             # System & Developer Tools — each its own APK
-│   ├── omniassistant/  automation/  routines/        # AI & Automation — each its own APK
+│   ├── automation/  routines/                         # AI & Automation — each its own APK
 │   ├── gallery/                                      # Media & Entertainment — its own APK
 │   ├── focushub/  todo/  journal/  finance/  pantry/ # Productivity & Life Tracking — each its own APK
 │   ├── calculator/  notes/  calendar/  filemanager/  # Core OS Utilities — each its own APK
@@ -55,12 +55,12 @@ Which apps have real functionality vs. a placeholder screen right now:
   Calendar, Pantry & Flavor Tracker (each backed by its own local Room
   database — data survives restarts).
 - **Placeholder apps** (scaffolded, functionality not yet built — each
-  needs something only you can provide first): Omni-Assistant (needs your
-  LLM API keys), Theming Engine (needs Shizuku pairing), Terminal Sandbox
-  (needs choosing a Python-on-Android runtime), Accessibility Automation
-  and Dialer (need dangerous permissions granted deliberately, not
-  silently), Routine Scheduler (needs DND policy access), Smart Gallery,
-  Focus Hub, File Manager.
+  needs something only you can provide first): Theming Engine (needs
+  Shizuku pairing), Terminal Sandbox (needs choosing a Python-on-Android
+  runtime), Accessibility Automation and Dialer (need dangerous
+  permissions granted deliberately, not silently), Routine Scheduler
+  (needs DND policy access), Smart Gallery, Focus Hub, File Manager.
+  No AI assistant app — Void AI already covers that pillar.
 
 ## Why apps demanded a manual uninstall before updating
 

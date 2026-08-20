@@ -32,7 +32,7 @@ include(":feature:terminal")
 include(":feature:sysmonitor")
 
 // ---- AI & Automation ----
-include(":feature:omniassistant")
+// No AI assistant module — Void AI already exists as its own app.
 include(":feature:automation")
 include(":feature:routines")
 

@@ -8,7 +8,6 @@
         <package android:name="com.voidecosystem.theming" />
         <package android:name="com.voidecosystem.terminal" />
         <package android:name="com.voidecosystem.sysmonitor" />
-        <package android:name="com.voidecosystem.omniassistant" />
         <package android:name="com.voidecosystem.automation" />
         <package android:name="com.voidecosystem.routines" />
         <package android:name="com.voidecosystem.gallery" />

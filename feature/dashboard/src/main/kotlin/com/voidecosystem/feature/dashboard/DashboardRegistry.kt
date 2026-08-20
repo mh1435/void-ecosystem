@@ -2,7 +2,6 @@ package com.voidecosystem.feature.dashboard
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Calculate
@@ -29,7 +28,8 @@ import com.voidecosystem.core.model.Pillar
  * registry never imports feature module code — it only knows package
  * names, display copy, and icons. Tapping a tile launches that package or,
  * if it isn't installed, opens the Releases page (see :app's MainActivity).
- * No Music Player entry here — Void Music already exists as its own app.
+ * No Music Player or AI Assistant entries here — Void Music and Void AI
+ * already exist as their own apps.
  */
 data class DashboardTile(
     val module: EcosystemModule,
@@ -48,10 +48,6 @@ val DashboardRegistry: List<DashboardTile> = listOf(
     DashboardTile(
         EcosystemModule("sysmonitor", "com.voidecosystem.sysmonitor", "System Monitor", "RAM, CPU, battery", Pillar.SYSTEM_TOOLS),
         Icons.Filled.Analytics,
-    ),
-    DashboardTile(
-        EcosystemModule("omniassistant", "com.voidecosystem.omniassistant", "Omni-Assistant", "Multi-LLM with fallback", Pillar.AI_AUTOMATION),
-        Icons.Filled.AutoAwesome,
     ),
     DashboardTile(
         EcosystemModule("automation", "com.voidecosystem.automation", "Automation", "Accessibility workflows", Pillar.AI_AUTOMATION),
