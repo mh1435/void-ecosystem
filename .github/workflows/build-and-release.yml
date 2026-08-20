@@ -109,7 +109,8 @@ jobs:
           prerelease: ${{ steps.signing.outputs.has_keystore == 'false' }}
           generate_release_notes: true
           files: ${{ steps.apk.outputs.path }}
-          body: ${{ steps.signing.outputs.has_keystore == 'false' && 'Built without the production signing secrets (KEYSTORE_BASE64 etc. — see keystore/README.md), so this is a **debug build**: fine to sideload and test, but future signed releases will NOT install over it as an update. Set up the keystore secrets to get real, upgradeable release builds.' || '' }}
+          body: >-
+            ${{ steps.signing.outputs.has_keystore == 'false' && 'Built without the production signing secrets (KEYSTORE_BASE64 etc, see keystore/README.md), so this is a debug build: fine to sideload and test, but future signed releases will NOT install over it as an update. Set up the keystore secrets to get real, upgradeable release builds.' || '' }}
 
       - name: Remove signing material from the runner
         if: always()
