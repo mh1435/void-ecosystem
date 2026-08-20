@@ -1,6 +1,5 @@
 package com.voidecosystem.app.install
 
-import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,30 +13,42 @@ import com.voidecosystem.app.BuildConfig
 import com.voidecosystem.core.model.AppInstallState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
 private const val RELEASES_LATEST_BASE = "https://github.com/mh1435/void-ecosystem/releases/latest/download"
 private const val TAG = "ApkInstaller"
-
-/** ~20s of zero byte movement (polled every 400ms) before a download is declared stalled. */
-private const val STALL_POLL_LIMIT = 50
+private const val MAX_REDIRECTS = 5
+private const val CONNECT_TIMEOUT_MS = 15_000
+private const val READ_TIMEOUT_MS = 15_000
 
 /**
  * Downloads a pillar app's release APK straight from this repo's GitHub
  * Release and hands it to the system installer — the in-app equivalent of
  * tapping "Install" in an app store, since these apps aren't published to
- * one. Uses Android's own [DownloadManager] (no extra HTTP dependency) and
- * a [FileProvider] (declared in AndroidManifest.xml) to grant the system
- * installer read access to the downloaded file.
+ * one.
+ *
+ * Fetches over a plain [HttpURLConnection] on a background coroutine
+ * instead of Android's `DownloadManager`. `DownloadManager` doesn't do the
+ * transfer itself — it hands the request off to a separate system process
+ * (`com.android.providers.downloads`), which a number of OEM skins (MIUI
+ * and others) let users disable, freeze, or battery-restrict independently
+ * of this app. When that happens every request just sits at
+ * PENDING/RUNNING with zero byte movement forever, even though the device's
+ * actual connection is fine — confirmed here: the release asset downloads
+ * instantly from outside the app, but never progressed through
+ * `DownloadManager`. Doing the HTTP request ourselves removes that whole
+ * failure class — it's just this app's own network I/O, same as any other
+ * request it makes, with nothing else on the device able to silently starve it.
  */
 class ApkInstaller(private val context: Context, private val scope: CoroutineScope) {
 
     /** Keyed by module route (e.g. "calculator"), observed directly by Compose. */
     val states = mutableStateMapOf<String, AppInstallState>()
-
-    private val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
     fun refreshInstalledState(route: String, packageName: String) {
         if (states[route] is AppInstallState.Downloading || states[route] == AppInstallState.Installing) {
@@ -90,94 +101,79 @@ class ApkInstaller(private val context: Context, private val scope: CoroutineSco
             return
         }
 
-        val fileName = "void-$route-release.apk"
-        val destFile = File(context.getExternalFilesDir(null), fileName)
-        if (destFile.exists()) destFile.delete()
-
-        val request = DownloadManager.Request(Uri.parse("$RELEASES_LATEST_BASE/$fileName"))
-            .setTitle("Void ${route.replaceFirstChar { it.uppercase() }}")
-            .setMimeType("application/vnd.android.package-archive")
-            .setDestinationInExternalFilesDir(context, null, fileName)
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-
-        val downloadId = downloadManager.enqueue(request)
         states[route] = AppInstallState.Downloading(0f)
-
         scope.launch(Dispatchers.IO) {
-            pollProgress(downloadId, route, destFile)
+            downloadAndInstall(route)
         }
     }
 
-    private suspend fun pollProgress(downloadId: Long, route: String, destFile: File) {
-        var downloading = true
-        var lastBytes = -1L
-        var stalledPolls = 0
+    private fun downloadAndInstall(route: String) {
+        val fileName = "void-$route-release.apk"
+        val destFile = File(context.getExternalFilesDir(null), fileName)
+        val tempFile = File(context.getExternalFilesDir(null), "$fileName.part")
+        if (tempFile.exists()) tempFile.delete()
 
-        while (downloading) {
-            try {
-                val cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
-                if (cursor == null) {
-                    downloading = false
-                    Log.w(TAG, "$route: query returned null cursor for downloadId=$downloadId")
-                    states[route] = AppInstallState.NotInstalled
+        var connection: HttpURLConnection? = null
+        try {
+            var url = URL("$RELEASES_LATEST_BASE/$fileName")
+            var redirects = 0
+            while (true) {
+                connection = (url.openConnection() as HttpURLConnection).apply {
+                    instanceFollowRedirects = false
+                    connectTimeout = CONNECT_TIMEOUT_MS
+                    readTimeout = READ_TIMEOUT_MS
+                    requestMethod = "GET"
+                }
+                val code = connection.responseCode
+                if (code in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                        ?: throw IOException("Redirect from $url had no Location header")
+                    connection.disconnect()
+                    if (++redirects > MAX_REDIRECTS) throw IOException("Too many redirects fetching $fileName")
+                    url = URL(location)
                     continue
                 }
-                cursor.use {
-                    if (!it.moveToFirst()) {
-                        downloading = false
-                        Log.w(TAG, "$route: cursor empty for downloadId=$downloadId — download record vanished")
-                        states[route] = AppInstallState.NotInstalled
-                        return@use
-                    }
-                    val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                    when (status) {
-                        DownloadManager.STATUS_SUCCESSFUL -> {
-                            downloading = false
-                            states[route] = AppInstallState.Installing
-                            triggerInstall(destFile)
-                        }
-                        DownloadManager.STATUS_FAILED -> {
-                            downloading = false
-                            val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
-                            Log.w(TAG, "$route: download failed, reason=$reason")
-                            states[route] = AppInstallState.NotInstalled
-                        }
-                        else -> {
-                            val bytes = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                            val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                            val progress = if (total > 0) bytes.toFloat() / total.toFloat() else 0f
+                if (code != HttpURLConnection.HTTP_OK) {
+                    throw IOException("HTTP $code fetching $url")
+                }
+                break
+            }
 
-                            // DownloadManager can sit in PENDING/RUNNING/PAUSED with zero
-                            // byte movement indefinitely (network-restricted background
-                            // service on some OEM ROMs, a stuck redirect, etc.) without ever
-                            // reaching a terminal status. Rather than showing a frozen
-                            // progress bar forever, give up after ~20s of no movement so the
-                            // user gets a tile they can retry instead of a dead one.
-                            if (bytes == lastBytes) {
-                                stalledPolls++
-                            } else {
-                                stalledPolls = 0
-                                lastBytes = bytes
-                            }
-                            if (stalledPolls >= STALL_POLL_LIMIT) {
-                                downloading = false
-                                val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
-                                Log.w(TAG, "$route: stalled at $bytes/$total bytes, status=$status, reason=$reason — giving up")
-                                downloadManager.remove(downloadId)
-                                states[route] = AppInstallState.NotInstalled
-                                return@use
-                            }
-
-                            states[route] = AppInstallState.Downloading(progress)
+            val total = connection.contentLengthLong
+            var bytesRead = 0L
+            var lastReportedAt = 0L
+            connection.inputStream.use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    val buffer = ByteArray(8 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        bytesRead += read
+                        val now = System.currentTimeMillis()
+                        if (now - lastReportedAt > 150) {
+                            lastReportedAt = now
+                            val progress = if (total > 0) bytesRead.toFloat() / total.toFloat() else 0f
+                            states[route] = AppInstallState.Downloading(progress.coerceIn(0f, 1f))
                         }
                     }
                 }
-            } catch (e: Exception) {
-                downloading = false
-                Log.e(TAG, "$route: exception while polling download $downloadId", e)
-                states[route] = AppInstallState.NotInstalled
             }
-            if (downloading) delay(400)
+
+            if (destFile.exists()) destFile.delete()
+            if (!tempFile.renameTo(destFile)) {
+                tempFile.copyTo(destFile, overwrite = true)
+                tempFile.delete()
+            }
+
+            states[route] = AppInstallState.Installing
+            triggerInstall(destFile)
+        } catch (e: Exception) {
+            Log.e(TAG, "$route: download failed", e)
+            tempFile.delete()
+            states[route] = AppInstallState.NotInstalled
+        } finally {
+            connection?.disconnect()
         }
     }
 
