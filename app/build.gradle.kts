@@ -28,12 +28,14 @@ val keystoreProperties = Properties().apply {
 // even when the signature matches. Deriving it from the commit count
 // means you never have to remember to bump it by hand, and it can never
 // go backwards as long as history only grows.
+// Uses providers.exec (not ProcessBuilder) so this external process is a
+// tracked configuration-cache input instead of an opaque side effect —
+// running a process directly at configuration time is disallowed once
+// org.gradle.configuration-cache=true (see gradle.properties).
 fun gitCommitCount(): Int = try {
-    ProcessBuilder("git", "rev-list", "--count", "HEAD")
-        .directory(rootDir)
-        .redirectErrorStream(true)
-        .start()
-        .inputStream.bufferedReader().readText().trim().toInt()
+    providers.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+    }.standardOutput.asText.get().trim().toInt()
 } catch (e: Exception) {
     1
 }
