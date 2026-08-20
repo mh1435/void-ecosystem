@@ -19,26 +19,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.voidecosystem.core.designsystem.component.PillarCard
 import com.voidecosystem.core.designsystem.theme.PillarAccents
+import com.voidecosystem.core.model.AppInstallState
 import com.voidecosystem.core.model.Pillar
 
 /**
  * The central gateway UI: the "home screen" of the whole ecosystem.
  * Every pillar's modules are grouped under a section header and rendered
  * as a grid of [PillarCard]s. Each tile is a *separately installed app*
- * — tapping one hands its applicationId back to the caller (:app's
- * MainActivity), which either launches it or offers to install it. This
- * screen never launches anything itself, so it stays trivially
- * previewable and independent of the apps it links to.
+ * — tapping one hands its route back to the caller (:app's MainActivity),
+ * which launches it if installed or downloads+installs it in-app if not.
+ * [installStates] is optional and Android-free (a plain map keyed by
+ * route), so this screen stays trivially previewable without :app.
  */
 @Composable
-fun DashboardRoute(onModuleClick: (packageName: String) -> Unit) {
-    DashboardScreen(tiles = DashboardRegistry, onModuleClick = onModuleClick)
+fun DashboardRoute(
+    installStates: Map<String, AppInstallState> = emptyMap(),
+    onModuleClick: (route: String, packageName: String) -> Unit,
+) {
+    DashboardScreen(tiles = DashboardRegistry, installStates = installStates, onModuleClick = onModuleClick)
 }
 
 @Composable
 fun DashboardScreen(
     tiles: List<DashboardTile>,
-    onModuleClick: (packageName: String) -> Unit,
+    installStates: Map<String, AppInstallState>,
+    onModuleClick: (route: String, packageName: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val grouped = tiles.groupBy { it.module.pillar }
@@ -71,12 +76,20 @@ fun DashboardScreen(
 
             items(pillarTiles, key = { it.module.route }) { tile ->
                 val accent = PillarAccents[tiles.indexOf(tile) % PillarAccents.size]
+                val state = installStates[tile.module.route]
+                val (subtitle, progress) = when (state) {
+                    is AppInstallState.Downloading -> "Downloading… ${(state.progress * 100).toInt()}%" to state.progress
+                    AppInstallState.Installing -> "Installing…" to 1f
+                    AppInstallState.NotInstalled -> "Tap to download" to null
+                    AppInstallState.Installed, null -> tile.module.subtitle to null
+                }
                 PillarCard(
                     title = tile.module.title,
-                    subtitle = tile.module.subtitle,
+                    subtitle = subtitle,
                     icon = tile.icon,
                     accent = accent,
-                    onClick = { onModuleClick(tile.module.packageName) },
+                    downloadProgress = progress,
+                    onClick = { onModuleClick(tile.module.route, tile.module.packageName) },
                 )
             }
         }

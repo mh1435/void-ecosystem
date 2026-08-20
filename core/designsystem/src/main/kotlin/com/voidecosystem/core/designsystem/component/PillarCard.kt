@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -34,6 +36,8 @@ fun PillarCard(
     icon: ImageVector,
     accent: Color,
     modifier: Modifier = Modifier,
+    /** Non-null while the app is downloading, in [0f, 1f]; renders a progress bar and dims the icon. */
+    downloadProgress: Float? = null,
     onClick: () -> Unit,
 ) {
     Box(
@@ -51,7 +55,12 @@ fun PillarCard(
                     .background(accent.copy(alpha = 0.18f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = accent)
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.alpha(if (downloadProgress != null) 0.5f else 1f),
+                )
             }
             Column(modifier = Modifier.padding(top = 12.dp)) {
                 Text(
@@ -68,6 +77,13 @@ fun PillarCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (downloadProgress != null) {
+                    LinearProgressIndicator(
+                        progress = { downloadProgress },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        color = accent,
+                    )
+                }
             }
         }
     }
