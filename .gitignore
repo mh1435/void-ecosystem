@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# Never commit signing material.
+keystore.properties
+*.jks
+*.keystore
+!keystore/README.md
