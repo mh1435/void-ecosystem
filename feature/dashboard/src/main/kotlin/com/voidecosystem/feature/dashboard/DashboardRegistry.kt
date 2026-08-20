@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Public
@@ -25,12 +24,12 @@ import com.voidecosystem.core.model.EcosystemModule
 import com.voidecosystem.core.model.Pillar
 
 /**
- * The dashboard's contract with every feature module: a route string (the
- * feature module owns the matching `<Name>Destination.ROUTE` constant),
- * display copy, and an icon. :app's NavHost is the single source of truth
- * that resolves each route to a real composable — this registry never
- * imports feature module code, only agreed-upon route strings, so the
- * dashboard builds and previews independent of the other 19 modules.
+ * The dashboard's contract with every pillar app: each one is a separate
+ * installed APK (applicationId `com.voidecosystem.<name>`), so this
+ * registry never imports feature module code — it only knows package
+ * names, display copy, and icons. Tapping a tile launches that package or,
+ * if it isn't installed, opens the Releases page (see :app's MainActivity).
+ * No Music Player entry here — Void Music already exists as its own app.
  */
 data class DashboardTile(
     val module: EcosystemModule,
@@ -39,79 +38,75 @@ data class DashboardTile(
 
 val DashboardRegistry: List<DashboardTile> = listOf(
     DashboardTile(
-        EcosystemModule("theming", "Theming Engine", "Widgets, clocks, lock screen", Pillar.SYSTEM_TOOLS),
+        EcosystemModule("theming", "com.voidecosystem.theming", "Theming Engine", "Widgets, clocks, lock screen", Pillar.SYSTEM_TOOLS),
         Icons.Filled.Palette,
     ),
     DashboardTile(
-        EcosystemModule("terminal", "Terminal Sandbox", "Scripts & API configs", Pillar.SYSTEM_TOOLS),
+        EcosystemModule("terminal", "com.voidecosystem.terminal", "Terminal Sandbox", "Scripts & API configs", Pillar.SYSTEM_TOOLS),
         Icons.Filled.Terminal,
     ),
     DashboardTile(
-        EcosystemModule("sysmonitor", "System Monitor", "RAM, CPU, battery", Pillar.SYSTEM_TOOLS),
+        EcosystemModule("sysmonitor", "com.voidecosystem.sysmonitor", "System Monitor", "RAM, CPU, battery", Pillar.SYSTEM_TOOLS),
         Icons.Filled.Analytics,
     ),
     DashboardTile(
-        EcosystemModule("omniassistant", "Omni-Assistant", "Multi-LLM with fallback", Pillar.AI_AUTOMATION),
+        EcosystemModule("omniassistant", "com.voidecosystem.omniassistant", "Omni-Assistant", "Multi-LLM with fallback", Pillar.AI_AUTOMATION),
         Icons.Filled.AutoAwesome,
     ),
     DashboardTile(
-        EcosystemModule("automation", "Automation", "Accessibility workflows", Pillar.AI_AUTOMATION),
+        EcosystemModule("automation", "com.voidecosystem.automation", "Automation", "Accessibility workflows", Pillar.AI_AUTOMATION),
         Icons.Filled.TouchApp,
     ),
     DashboardTile(
-        EcosystemModule("routines", "Routine Scheduler", "Context-aware device states", Pillar.AI_AUTOMATION),
+        EcosystemModule("routines", "com.voidecosystem.routines", "Routine Scheduler", "Context-aware device states", Pillar.AI_AUTOMATION),
         Icons.Filled.Schedule,
     ),
     DashboardTile(
-        EcosystemModule("musicplayer", "Music Player", "Playback & mood playlists", Pillar.MEDIA),
-        Icons.Filled.MusicNote,
-    ),
-    DashboardTile(
-        EcosystemModule("gallery", "Smart Gallery", "Tagging & private vault", Pillar.MEDIA),
+        EcosystemModule("gallery", "com.voidecosystem.gallery", "Smart Gallery", "Tagging & private vault", Pillar.MEDIA),
         Icons.Filled.Photo,
     ),
     DashboardTile(
-        EcosystemModule("focushub", "Focus Hub", "Gamified focus timer", Pillar.PRODUCTIVITY),
+        EcosystemModule("focushub", "com.voidecosystem.focushub", "Focus Hub", "Gamified focus timer", Pillar.PRODUCTIVITY),
         Icons.Filled.LocalFireDepartment,
     ),
     DashboardTile(
-        EcosystemModule("todo", "To-Do", "Projects & due dates", Pillar.PRODUCTIVITY),
+        EcosystemModule("todo", "com.voidecosystem.todo", "To-Do", "Projects & due dates", Pillar.PRODUCTIVITY),
         Icons.Filled.Checklist,
     ),
     DashboardTile(
-        EcosystemModule("journal", "Journal", "Private Markdown journaling", Pillar.PRODUCTIVITY),
+        EcosystemModule("journal", "com.voidecosystem.journal", "Journal", "Private Markdown journaling", Pillar.PRODUCTIVITY),
         Icons.Filled.MenuBook,
     ),
     DashboardTile(
-        EcosystemModule("finance", "Finance", "Personal finance tracker", Pillar.PRODUCTIVITY),
+        EcosystemModule("finance", "com.voidecosystem.finance", "Finance", "Personal finance tracker", Pillar.PRODUCTIVITY),
         Icons.Filled.Savings,
     ),
     DashboardTile(
-        EcosystemModule("pantry", "Pantry & Flavor", "Meal prep & flavor logs", Pillar.PRODUCTIVITY),
+        EcosystemModule("pantry", "com.voidecosystem.pantry", "Pantry & Flavor", "Meal prep & flavor logs", Pillar.PRODUCTIVITY),
         Icons.Filled.Kitchen,
     ),
     DashboardTile(
-        EcosystemModule("calculator", "Calculator", "Scientific & conversions", Pillar.UTILITIES),
+        EcosystemModule("calculator", "com.voidecosystem.calculator", "Calculator", "Scientific & conversions", Pillar.UTILITIES),
         Icons.Filled.Calculate,
     ),
     DashboardTile(
-        EcosystemModule("notes", "Notes & Voice", "Markdown notes, recordings", Pillar.UTILITIES),
+        EcosystemModule("notes", "com.voidecosystem.notes", "Notes & Voice", "Markdown notes, recordings", Pillar.UTILITIES),
         Icons.Filled.Mic,
     ),
     DashboardTile(
-        EcosystemModule("calendar", "Calendar", "Recurring events", Pillar.UTILITIES),
+        EcosystemModule("calendar", "com.voidecosystem.calendar", "Calendar", "Recurring events", Pillar.UTILITIES),
         Icons.Filled.CalendarMonth,
     ),
     DashboardTile(
-        EcosystemModule("filemanager", "File Manager", "Root-capable explorer", Pillar.UTILITIES),
+        EcosystemModule("filemanager", "com.voidecosystem.filemanager", "File Manager", "Root-capable explorer", Pillar.UTILITIES),
         Icons.Filled.Folder,
     ),
     DashboardTile(
-        EcosystemModule("dialer", "Dialer & Contacts", "Spam-filtered calling", Pillar.COMMUNICATION),
+        EcosystemModule("dialer", "com.voidecosystem.dialer", "Dialer & Contacts", "Spam-filtered calling", Pillar.COMMUNICATION),
         Icons.Filled.Call,
     ),
     DashboardTile(
-        EcosystemModule("browser", "Browser", "Privacy-first browsing", Pillar.COMMUNICATION),
+        EcosystemModule("browser", "com.voidecosystem.browser", "Browser", "Privacy-first browsing", Pillar.COMMUNICATION),
         Icons.Filled.Public,
     ),
 )

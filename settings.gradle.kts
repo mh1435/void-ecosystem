@@ -37,7 +37,7 @@ include(":feature:automation")
 include(":feature:routines")
 
 // ---- Media & Entertainment ----
-include(":feature:musicplayer")
+// No music player module — Void Music already exists as its own app.
 include(":feature:gallery")
 
 // ---- Productivity & Life Tracking ----

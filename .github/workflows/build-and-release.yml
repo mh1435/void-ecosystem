@@ -1,4 +1,4 @@
-name: Build and Release APK
+name: Build and Release APKs
 
 on:
   push:
@@ -17,9 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Full history: app/build.gradle.kts derives versionCode from
-          # `git rev-list --count HEAD`, which needs the whole log, not a
-          # shallow depth-1 checkout, or every build would report versionCode=1.
+          # Full history: the root build.gradle.kts derives versionCode
+          # (shared by every app) from `git rev-list --count HEAD`, which
+          # needs the whole log, not a shallow depth-1 checkout.
           fetch-depth: 0
 
       - name: Set up JDK 17
@@ -35,11 +35,11 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       # Production releases need the real keystore secrets (see
-      # keystore/README.md) so every build shares one signature forever —
-      # that's what makes in-place updates work. Until those four secrets
-      # exist, this falls back to an unsigned-for-production debug build
-      # (Gradle's own auto-generated debug key) so pushes still produce an
-      # installable APK instead of hard-failing the workflow.
+      # keystore/README.md) so every app's build shares one signature
+      # forever — that's what makes in-place updates work. Until those
+      # four secrets exist, this falls back to unsigned-for-production
+      # debug APKs (Gradle's own auto-generated debug key) so pushes
+      # still produce installable APKs instead of hard-failing.
       - name: Check for signing secrets
         id: signing
         env:
@@ -49,7 +49,7 @@ jobs:
             echo "has_keystore=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_keystore=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::KEYSTORE_BASE64 secret is not set — building an unsigned-for-production DEBUG APK instead. See keystore/README.md to enable real signed releases."
+            echo "::warning::KEYSTORE_BASE64 secret is not set — building unsigned-for-production DEBUG APKs instead. See keystore/README.md to enable real signed releases."
           fi
 
       - name: Decode signing keystore
@@ -69,13 +69,16 @@ jobs:
           keyPassword=$KEYSTORE_KEY_PASSWORD
           EOF
 
-      - name: Build signed release APK
+      # Running `assembleRelease`/`assembleDebug` with no module prefix
+      # builds that task for every application module at once — :app plus
+      # all ~18 standalone pillar apps — without listing each one by hand.
+      - name: Build signed release APKs (every app)
         if: steps.signing.outputs.has_keystore == 'true'
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
 
-      - name: Build debug APK (fallback, unsigned for production)
+      - name: Build debug APKs (fallback, unsigned for production)
         if: steps.signing.outputs.has_keystore == 'false'
-        run: ./gradlew :app:assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Resolve release tag
         id: tag
@@ -86,19 +89,33 @@ jobs:
             echo "tag=build-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Locate built APK
-        id: apk
+      - name: Collect built APKs
+        id: apks
         run: |
+          set -euo pipefail
           if [[ "${{ steps.signing.outputs.has_keystore }}" == "true" ]]; then
-            apk_path=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+            variant=release
           else
-            apk_path=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+            variant=debug
           fi
-          if [[ -z "$apk_path" ]]; then
-            echo "::error::No built APK found under app/build/outputs/apk" >&2
+          mkdir -p dist
+          count=0
+          while IFS= read -r -d '' apk; do
+            # Prefix with the module's project dir name (e.g. "app",
+            # "theming", "calculator") so every APK gets a unique,
+            # recognizable filename once collected into one flat dist/.
+            rel="${apk#./}"
+            module_path="${rel%/build/outputs/apk/*}"
+            module=$(basename "$module_path")
+            cp "$apk" "dist/void-${module}-${variant}.apk"
+            count=$((count + 1))
+          done < <(find . -path "*/build/outputs/apk/${variant}/*.apk" -print0)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [[ "$count" -eq 0 ]]; then
+            echo "::error::No APKs found under any module's build/outputs/apk/${variant}" >&2
             exit 1
           fi
-          echo "path=$apk_path" >> "$GITHUB_OUTPUT"
+          ls -la dist
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -108,9 +125,9 @@ jobs:
             Void Ecosystem ${{ steps.tag.outputs.tag }}${{ steps.signing.outputs.has_keystore == 'false' && ' (debug, unsigned for production)' || '' }}
           prerelease: ${{ steps.signing.outputs.has_keystore == 'false' }}
           generate_release_notes: true
-          files: ${{ steps.apk.outputs.path }}
+          files: dist/*.apk
           body: >-
-            ${{ steps.signing.outputs.has_keystore == 'false' && 'Built without the production signing secrets (KEYSTORE_BASE64 etc, see keystore/README.md), so this is a debug build: fine to sideload and test, but future signed releases will NOT install over it as an update. Set up the keystore secrets to get real, upgradeable release builds.' || '' }}
+            ${{ steps.apks.outputs.count }} apps built as separate installable APKs — grab the ones you want individually, or start with void-app-*.apk (the dashboard) to launch the rest.${{ steps.signing.outputs.has_keystore == 'false' && ' Built without the production signing secrets (KEYSTORE_BASE64 etc, see keystore/README.md), so these are debug builds: fine to sideload and test, but future signed releases will NOT install over them as an update. Set up the keystore secrets to get real, upgradeable release builds.' || '' }}
 
       - name: Remove signing material from the runner
         if: always()

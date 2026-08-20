@@ -1,6 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Android 11+ hides other installed apps from view by default; each
+         pillar app must be explicitly declared here so the dashboard can
+         check whether it's installed and launch it. -->
+    <queries>
+        <package android:name="com.voidecosystem.theming" />
+        <package android:name="com.voidecosystem.terminal" />
+        <package android:name="com.voidecosystem.sysmonitor" />
+        <package android:name="com.voidecosystem.omniassistant" />
+        <package android:name="com.voidecosystem.automation" />
+        <package android:name="com.voidecosystem.routines" />
+        <package android:name="com.voidecosystem.gallery" />
+        <package android:name="com.voidecosystem.focushub" />
+        <package android:name="com.voidecosystem.todo" />
+        <package android:name="com.voidecosystem.journal" />
+        <package android:name="com.voidecosystem.finance" />
+        <package android:name="com.voidecosystem.pantry" />
+        <package android:name="com.voidecosystem.calculator" />
+        <package android:name="com.voidecosystem.notes" />
+        <package android:name="com.voidecosystem.calendar" />
+        <package android:name="com.voidecosystem.filemanager" />
+        <package android:name="com.voidecosystem.dialer" />
+        <package android:name="com.voidecosystem.browser" />
+    </queries>
+
     <application
         android:name=".VoidApplication"
         android:allowBackup="true"

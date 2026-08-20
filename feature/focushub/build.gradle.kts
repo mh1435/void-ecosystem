@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
@@ -9,7 +9,36 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
+        applicationId = "com.voidecosystem.focushub"
         minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
+        versionCode = rootProject.extra["ecosystemVersionCode"] as Int
+        versionName = rootProject.extra["ecosystemVersionName"] as String
+    }
+
+    signingConfigs {
+        create("release") {
+            if (rootProject.extra["hasKeystore"] as Boolean) {
+                storeFile = rootProject.file(rootProject.extra["keystoreStoreFile"] as String)
+                storePassword = rootProject.extra["keystoreStorePassword"] as String
+                keyAlias = rootProject.extra["keystoreKeyAlias"] as String
+                keyPassword = rootProject.extra["keystoreKeyPassword"] as String
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (rootProject.extra["hasKeystore"] as Boolean) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+        debug {
+            applicationIdSuffix = ".debug"
+        }
     }
 
     buildFeatures {
@@ -36,4 +65,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
+    implementation(libs.androidx.activity.compose)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }

@@ -21,27 +21,24 @@ import com.voidecosystem.core.designsystem.component.PillarCard
 import com.voidecosystem.core.designsystem.theme.PillarAccents
 import com.voidecosystem.core.model.Pillar
 
-object DashboardDestination {
-    const val ROUTE = "dashboard"
-}
-
 /**
  * The central gateway UI: the "home screen" of the whole ecosystem.
  * Every pillar's modules are grouped under a section header and rendered
- * as a grid of [PillarCard]s. Tapping a tile hands the route string back
- * to the caller (:app's NavHost) — this screen never navigates itself,
- * so it stays trivially previewable and independent of the 19 feature
- * modules it links to.
+ * as a grid of [PillarCard]s. Each tile is a *separately installed app*
+ * — tapping one hands its applicationId back to the caller (:app's
+ * MainActivity), which either launches it or offers to install it. This
+ * screen never launches anything itself, so it stays trivially
+ * previewable and independent of the apps it links to.
  */
 @Composable
-fun DashboardRoute(onModuleClick: (route: String) -> Unit) {
+fun DashboardRoute(onModuleClick: (packageName: String) -> Unit) {
     DashboardScreen(tiles = DashboardRegistry, onModuleClick = onModuleClick)
 }
 
 @Composable
 fun DashboardScreen(
     tiles: List<DashboardTile>,
-    onModuleClick: (route: String) -> Unit,
+    onModuleClick: (packageName: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val grouped = tiles.groupBy { it.module.pillar }
@@ -79,7 +76,7 @@ fun DashboardScreen(
                     subtitle = tile.module.subtitle,
                     icon = tile.icon,
                     accent = accent,
-                    onClick = { onModuleClick(tile.module.route) },
+                    onClick = { onModuleClick(tile.module.packageName) },
                 )
             }
         }
