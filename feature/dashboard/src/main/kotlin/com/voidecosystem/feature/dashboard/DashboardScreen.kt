@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material3.Button
@@ -26,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +41,6 @@ import com.voidecosystem.core.designsystem.component.TileAction
 import com.voidecosystem.core.designsystem.theme.PillarAccents
 import com.voidecosystem.core.model.AppInstallState
 import com.voidecosystem.core.model.Pillar
-import com.voidecosystem.core.model.SilentInstallStatus
 
 /**
  * The central gateway UI: the "home screen" of the whole ecosystem, styled
@@ -51,25 +48,21 @@ import com.voidecosystem.core.model.SilentInstallStatus
  * section header and rendered as a grid of [PillarCard]s. Each tile is a
  * *separately installed app* — tapping one hands its route back to the
  * caller (:app's MainActivity), which launches it if installed or
- * downloads+installs it in-app (silently via Shizuku when available) if
- * not. [installStates] is optional and Android-free (a plain map keyed by
- * route), so this screen stays trivially previewable without :app.
+ * downloads+installs it in-app if not. [installStates] is optional and
+ * Android-free (a plain map keyed by route), so this screen stays
+ * trivially previewable without :app.
  */
 @Composable
 fun DashboardRoute(
     installStates: Map<String, AppInstallState> = emptyMap(),
     onModuleClick: (route: String, packageName: String) -> Unit,
     onUpdateAll: () -> Unit = {},
-    silentInstallStatus: SilentInstallStatus = SilentInstallStatus.UNAVAILABLE,
-    onEnableSilentInstalls: () -> Unit = {},
 ) {
     DashboardScreen(
         tiles = DashboardRegistry,
         installStates = installStates,
         onModuleClick = onModuleClick,
         onUpdateAll = onUpdateAll,
-        silentInstallStatus = silentInstallStatus,
-        onEnableSilentInstalls = onEnableSilentInstalls,
     )
 }
 
@@ -81,8 +74,6 @@ fun DashboardScreen(
     onModuleClick: (route: String, packageName: String) -> Unit,
     modifier: Modifier = Modifier,
     onUpdateAll: () -> Unit = {},
-    silentInstallStatus: SilentInstallStatus = SilentInstallStatus.UNAVAILABLE,
-    onEnableSilentInstalls: () -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
     val filtered = remember(tiles, query) {
@@ -127,12 +118,6 @@ fun DashboardScreen(
         item(span = { GridItemSpan(2) }) {
             AnimatedVisibility(visible = updatable > 0) {
                 UpdateAllBanner(count = updatable, onUpdateAll = onUpdateAll)
-            }
-        }
-
-        item(span = { GridItemSpan(2) }) {
-            AnimatedVisibility(visible = silentInstallStatus == SilentInstallStatus.NEEDS_PERMISSION) {
-                ShizukuBanner(onEnable = onEnableSilentInstalls)
             }
         }
 
@@ -203,32 +188,6 @@ private fun UpdateAllBanner(count: Int, onUpdateAll: () -> Unit, modifier: Modif
             )
         }
         Button(onClick = onUpdateAll) { Text("Update all") }
-    }
-}
-
-@Composable
-private fun ShizukuBanner(onEnable: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Column(modifier = Modifier.padding(start = 10.dp)) {
-                Text("Silent installs available", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "Shizuku is paired — grant permission to skip install prompts.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        TextButton(onClick = onEnable) { Text("Enable") }
     }
 }
 

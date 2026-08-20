@@ -123,7 +123,7 @@ class ApkInstaller(private val context: Context, private val scope: CoroutineSco
                     DownloadManager.STATUS_SUCCESSFUL -> {
                         downloading = false
                         states[route] = AppInstallState.Installing
-                        triggerInstall(route, destFile)
+                        triggerInstall(destFile)
                     }
                     DownloadManager.STATUS_FAILED -> {
                         downloading = false
@@ -141,17 +141,7 @@ class ApkInstaller(private val context: Context, private val scope: CoroutineSco
         }
     }
 
-    /**
-     * Tries the silent Shizuku path first — zero system prompts, matching
-     * how the Play Store updates apps in the background. Falls back to the
-     * normal system installer intent whenever Shizuku isn't paired, isn't
-     * running, or the silent install itself fails for any reason.
-     */
-    private fun triggerInstall(route: String, file: File) {
-        if (ShizukuInstaller.silentInstall(file)) {
-            states[route] = AppInstallState.Installed
-            return
-        }
+    private fun triggerInstall(file: File) {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")

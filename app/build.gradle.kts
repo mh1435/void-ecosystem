@@ -92,11 +92,4 @@ dependencies {
     implementation(libs.bundles.compose)
     implementation(libs.androidx.compose.material.icons.extended)
     debugImplementation(libs.androidx.compose.ui.tooling)
-
-    // Optional silent-install path: lets the installer update pillar apps
-    // with zero system prompts when the user has paired Shizuku, without
-    // requiring it (ApkInstaller falls back to the normal installer intent
-    // whenever Shizuku isn't running or hasn't been granted permission).
-    implementation(libs.shizuku.api)
-    implementation(libs.shizuku.provider)
 }
