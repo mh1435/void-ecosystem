@@ -74,7 +74,7 @@ class ApkInstaller(private val context: Context, private val scope: CoroutineSco
         val intent = Intent(
             Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
             Uri.parse("package:${context.packageName}"),
-        )
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     }
 
