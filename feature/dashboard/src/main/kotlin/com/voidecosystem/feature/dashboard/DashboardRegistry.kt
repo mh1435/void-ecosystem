@@ -38,11 +38,11 @@ data class DashboardTile(
 
 val DashboardRegistry: List<DashboardTile> = listOf(
     DashboardTile(
-        EcosystemModule("theming", "com.voidecosystem.theming", "Theming Engine", "Widgets, clocks, lock screen", Pillar.SYSTEM_TOOLS),
+        EcosystemModule("theming", "com.voidecosystem.theming", "Theming Engine", "Palette preview & wallpapers", Pillar.SYSTEM_TOOLS),
         Icons.Filled.Palette,
     ),
     DashboardTile(
-        EcosystemModule("terminal", "com.voidecosystem.terminal", "Terminal Sandbox", "Scripts & API configs", Pillar.SYSTEM_TOOLS),
+        EcosystemModule("terminal", "com.voidecosystem.terminal", "Terminal Sandbox", "Sandboxed shell", Pillar.SYSTEM_TOOLS),
         Icons.Filled.Terminal,
     ),
     DashboardTile(
@@ -98,7 +98,7 @@ val DashboardRegistry: List<DashboardTile> = listOf(
         Icons.Filled.Folder,
     ),
     DashboardTile(
-        EcosystemModule("dialer", "com.voidecosystem.dialer", "Dialer & Contacts", "Spam-filtered calling", Pillar.COMMUNICATION),
+        EcosystemModule("dialer", "com.voidecosystem.dialer", "Dialer & Contacts", "Dial pad & contact list", Pillar.COMMUNICATION),
         Icons.Filled.Call,
     ),
     DashboardTile(
