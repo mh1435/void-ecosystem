@@ -184,7 +184,7 @@ private fun formatBytes(bytes: Long): String = when {
     else -> "$bytes B"
 }
 
-private val uriListSaver: Saver<List<Uri>, List<String>> = listSaver(
+private val uriListSaver: Saver<List<Uri>, Any> = listSaver(
     save = { list -> list.map { it.toString() } },
     restore = { list -> list.map { it.toUri() } },
 )
