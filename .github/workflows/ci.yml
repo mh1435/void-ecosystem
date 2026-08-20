@@ -1,0 +1,61 @@
+name: CI
+
+# Validates every push/PR by building all app modules as debug APKs and
+# uploading them as workflow artifacts — no public GitHub Release. Keeps
+# the Releases tab reserved for deliberate, tagged versions (see
+# release.yml) instead of one new release per commit.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history: the root build.gradle.kts derives versionCode
+          # (shared by every app) from `git rev-list --count HEAD`.
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # No module prefix builds every app module (:app plus all ~18 pillar
+      # apps) in one invocation. Debug-signed with Gradle's own
+      # auto-generated debug key — this build only proves everything
+      # compiles, it isn't meant to be installed as an update over a real
+      # release, so it doesn't need the production keystore secrets.
+      - name: Build debug APKs (every app)
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --no-daemon --console=plain 2>&1 | tee build.log || {
+            echo "::group::Compiler diagnostics"
+            grep -E "^e: |: error:" build.log | head -150 || true
+            echo "::endgroup::"
+            exit 1
+          }
+
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apks
+          path: "**/build/outputs/apk/debug/*.apk"
+          if-no-files-found: error

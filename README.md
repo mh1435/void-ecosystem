@@ -115,15 +115,26 @@ EOF
 
 ## CI/CD
 
-`.github/workflows/build-and-release.yml` runs `assembleRelease` with no
-module prefix — which builds *every* application module in the project at
-once — on every push to `main` and on any `v*.*.*` tag, collects every
-resulting APK, and publishes them all as assets on one GitHub Release
-(`void-app-release.apk`, `void-calculator-release.apk`, ...). It needs
-four repository secrets — `KEYSTORE_BASE64`, `KEYSTORE_STORE_PASSWORD`,
-`KEYSTORE_KEY_ALIAS`, `KEYSTORE_KEY_PASSWORD` — set up per
-`keystore/README.md`. Tag a commit `v1.2.0` for a named release, or just
-push to `main` for a rolling `build-<run number>` release.
+Two workflows, split by purpose so the Releases tab stays reserved for
+things you'd actually want to install:
+
+- **`.github/workflows/ci.yml`** — runs on every push and PR, builds
+  `assembleDebug` for every app module at once, and uploads the APKs as a
+  workflow artifact. This is "does it compile," nothing more; no public
+  release, no signing secrets required.
+- **`.github/workflows/release.yml`** — fires only when you push a
+  version tag (`git tag v1.2.0 && git push origin v1.2.0`), or via manual
+  `workflow_dispatch` with a tag input. Builds `assembleRelease` for
+  every app module, signed with the real production keystore (fails
+  loudly rather than falling back to a debug-signed release if the
+  keystore secrets are missing), and publishes every resulting APK as
+  assets on one clean GitHub Release (`void-app-release.apk`,
+  `void-calculator-release.apk`, ...).
+
+Both need `KEYSTORE_BASE64`, `KEYSTORE_STORE_PASSWORD`,
+`KEYSTORE_KEY_ALIAS`, `KEYSTORE_KEY_PASSWORD` set up per
+`keystore/README.md` — `release.yml` requires them, `ci.yml` doesn't use
+them at all.
 
 ## Tech stack
 
