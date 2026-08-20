@@ -9,6 +9,7 @@ package com.voidecosystem.core.model
 sealed interface AppInstallState {
     data object Installed : AppInstallState
     data object NotInstalled : AppInstallState
+    data class UpdateAvailable(val installedVersion: Long, val latestVersion: Long) : AppInstallState
     data class Downloading(val progress: Float) : AppInstallState
     data object Installing : AppInstallState
 }

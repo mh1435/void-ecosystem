@@ -61,6 +61,18 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Required transport for the optional Shizuku silent-install path
+             (see install/ShizukuInstaller.kt) — this is how the Shizuku app,
+             once paired by the user, delivers its privileged binder into
+             this process. Entirely inert if Shizuku isn't installed. -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
     </application>
 
 </manifest>

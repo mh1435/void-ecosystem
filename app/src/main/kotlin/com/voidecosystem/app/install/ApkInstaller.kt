@@ -9,6 +9,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.core.content.FileProvider
+import com.voidecosystem.app.BuildConfig
 import com.voidecosystem.core.model.AppInstallState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,14 +38,32 @@ class ApkInstaller(private val context: Context, private val scope: CoroutineSco
         if (states[route] is AppInstallState.Downloading || states[route] == AppInstallState.Installing) {
             return
         }
-        states[route] = if (isInstalled(packageName)) AppInstallState.Installed else AppInstallState.NotInstalled
+        val installedVersion = installedVersionCode(packageName)
+        val latestVersion = BuildConfig.VERSION_CODE.toLong()
+        states[route] = when {
+            installedVersion == null -> AppInstallState.NotInstalled
+            installedVersion < latestVersion -> AppInstallState.UpdateAvailable(installedVersion, latestVersion)
+            else -> AppInstallState.Installed
+        }
     }
 
-    private fun isInstalled(packageName: String): Boolean = try {
-        context.packageManager.getPackageInfo(packageName, 0)
-        true
+    /**
+     * Every pillar app and this installer itself share one versionCode
+     * scheme (the git commit count at build time — see root build.gradle.kts),
+     * so this installer's own [BuildConfig.VERSION_CODE] doubles as "the
+     * latest known ecosystem version" without a separate network call to
+     * check for updates.
+     */
+    private fun installedVersionCode(packageName: String): Long? = try {
+        val info = context.packageManager.getPackageInfo(packageName, 0)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            info.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            info.versionCode.toLong()
+        }
     } catch (e: PackageManager.NameNotFoundException) {
-        false
+        null
     }
 
     /** True if the user still needs to flip on "install unknown apps" for this app. */
@@ -104,7 +123,7 @@ class ApkInstaller(private val context: Context, private val scope: CoroutineSco
                     DownloadManager.STATUS_SUCCESSFUL -> {
                         downloading = false
                         states[route] = AppInstallState.Installing
-                        triggerInstall(destFile)
+                        triggerInstall(route, destFile)
                     }
                     DownloadManager.STATUS_FAILED -> {
                         downloading = false
@@ -122,7 +141,17 @@ class ApkInstaller(private val context: Context, private val scope: CoroutineSco
         }
     }
 
-    private fun triggerInstall(file: File) {
+    /**
+     * Tries the silent Shizuku path first — zero system prompts, matching
+     * how the Play Store updates apps in the background. Falls back to the
+     * normal system installer intent whenever Shizuku isn't paired, isn't
+     * running, or the silent install itself fails for any reason.
+     */
+    private fun triggerInstall(route: String, file: File) {
+        if (ShizukuInstaller.silentInstall(file)) {
+            states[route] = AppInstallState.Installed
+            return
+        }
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")

@@ -51,6 +51,10 @@ android {
 
     buildFeatures {
         compose = true
+        // Exposes BuildConfig.VERSION_CODE, which this app's own build uses
+        // as the "latest known" ecosystem versionCode when deciding whether
+        // an installed pillar app is stale (see ApkInstaller).
+        buildConfig = true
     }
 
     compileOptions {
@@ -86,5 +90,13 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
+    implementation(libs.androidx.compose.material.icons.extended)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // Optional silent-install path: lets the installer update pillar apps
+    // with zero system prompts when the user has paired Shizuku, without
+    // requiring it (ApkInstaller falls back to the normal installer intent
+    // whenever Shizuku isn't running or hasn't been granted permission).
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
 }
