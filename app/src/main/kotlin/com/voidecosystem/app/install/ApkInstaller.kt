@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.core.content.FileProvider
 import com.voidecosystem.app.BuildConfig
@@ -18,6 +19,10 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 private const val RELEASES_LATEST_BASE = "https://github.com/mh1435/void-ecosystem/releases/latest/download"
+private const val TAG = "ApkInstaller"
+
+/** ~20s of zero byte movement (polled every 400ms) before a download is declared stalled. */
+private const val STALL_POLL_LIMIT = 50
 
 /**
  * Downloads a pillar app's release APK straight from this repo's GitHub
@@ -105,37 +110,72 @@ class ApkInstaller(private val context: Context, private val scope: CoroutineSco
 
     private suspend fun pollProgress(downloadId: Long, route: String, destFile: File) {
         var downloading = true
+        var lastBytes = -1L
+        var stalledPolls = 0
+
         while (downloading) {
-            val cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
-            if (cursor == null) {
-                downloading = false
-                states[route] = AppInstallState.NotInstalled
-                continue
-            }
-            cursor.use {
-                if (!it.moveToFirst()) {
+            try {
+                val cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
+                if (cursor == null) {
                     downloading = false
+                    Log.w(TAG, "$route: query returned null cursor for downloadId=$downloadId")
                     states[route] = AppInstallState.NotInstalled
-                    return@use
+                    continue
                 }
-                val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                when (status) {
-                    DownloadManager.STATUS_SUCCESSFUL -> {
+                cursor.use {
+                    if (!it.moveToFirst()) {
                         downloading = false
-                        states[route] = AppInstallState.Installing
-                        triggerInstall(destFile)
-                    }
-                    DownloadManager.STATUS_FAILED -> {
-                        downloading = false
+                        Log.w(TAG, "$route: cursor empty for downloadId=$downloadId — download record vanished")
                         states[route] = AppInstallState.NotInstalled
+                        return@use
                     }
-                    else -> {
-                        val bytes = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                        val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                        val progress = if (total > 0) bytes.toFloat() / total.toFloat() else 0f
-                        states[route] = AppInstallState.Downloading(progress)
+                    val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                    when (status) {
+                        DownloadManager.STATUS_SUCCESSFUL -> {
+                            downloading = false
+                            states[route] = AppInstallState.Installing
+                            triggerInstall(destFile)
+                        }
+                        DownloadManager.STATUS_FAILED -> {
+                            downloading = false
+                            val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                            Log.w(TAG, "$route: download failed, reason=$reason")
+                            states[route] = AppInstallState.NotInstalled
+                        }
+                        else -> {
+                            val bytes = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                            val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                            val progress = if (total > 0) bytes.toFloat() / total.toFloat() else 0f
+
+                            // DownloadManager can sit in PENDING/RUNNING/PAUSED with zero
+                            // byte movement indefinitely (network-restricted background
+                            // service on some OEM ROMs, a stuck redirect, etc.) without ever
+                            // reaching a terminal status. Rather than showing a frozen
+                            // progress bar forever, give up after ~20s of no movement so the
+                            // user gets a tile they can retry instead of a dead one.
+                            if (bytes == lastBytes) {
+                                stalledPolls++
+                            } else {
+                                stalledPolls = 0
+                                lastBytes = bytes
+                            }
+                            if (stalledPolls >= STALL_POLL_LIMIT) {
+                                downloading = false
+                                val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                                Log.w(TAG, "$route: stalled at $bytes/$total bytes, status=$status, reason=$reason — giving up")
+                                downloadManager.remove(downloadId)
+                                states[route] = AppInstallState.NotInstalled
+                                return@use
+                            }
+
+                            states[route] = AppInstallState.Downloading(progress)
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                downloading = false
+                Log.e(TAG, "$route: exception while polling download $downloadId", e)
+                states[route] = AppInstallState.NotInstalled
             }
             if (downloading) delay(400)
         }
