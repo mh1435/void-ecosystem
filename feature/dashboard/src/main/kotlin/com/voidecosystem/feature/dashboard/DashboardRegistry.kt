@@ -50,7 +50,7 @@ val DashboardRegistry: List<DashboardTile> = listOf(
         Icons.Filled.Analytics,
     ),
     DashboardTile(
-        EcosystemModule("automation", "com.voidecosystem.automation", "Automation", "Accessibility workflows", Pillar.AI_AUTOMATION),
+        EcosystemModule("automation", "com.voidecosystem.automation", "Automation", "Accessibility app blocker", Pillar.AI_AUTOMATION),
         Icons.Filled.TouchApp,
     ),
     DashboardTile(

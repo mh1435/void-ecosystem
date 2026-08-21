@@ -17,6 +17,7 @@ data class Note(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val body: String,
+    val audioFilePath: String? = null,
     val updatedAt: Long = System.currentTimeMillis(),
 )
 
@@ -35,7 +36,7 @@ interface NoteDao {
     suspend fun deleteById(id: Long)
 }
 
-@Database(entities = [Note::class], version = 1, exportSchema = false)
+@Database(entities = [Note::class], version = 2, exportSchema = false)
 abstract class NoteDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
 
@@ -48,7 +49,7 @@ abstract class NoteDatabase : RoomDatabase() {
                     context.applicationContext,
                     NoteDatabase::class.java,
                     "void-notes.db",
-                ).build().also { instance = it }
+                ).fallbackToDestructiveMigration(dropAllTables = true).build().also { instance = it }
             }
     }
 }
