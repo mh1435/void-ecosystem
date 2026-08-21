@@ -1,5 +1,6 @@
 package com.voidecosystem.feature.automation
 
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.Application
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -73,7 +74,7 @@ class AutomationViewModel(application: Application) : AndroidViewModel(applicati
         val context = getApplication<Application>()
         val am = context.getSystemService(AccessibilityManager::class.java) ?: return false
         val expectedId = "${context.packageName}/${VoidAccessibilityService::class.java.name}"
-        return am.getEnabledAccessibilityServiceList(AccessibilityManager.FEEDBACK_ALL_MASK)
+        return am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
             .any { it.id == expectedId }
     }
 }
