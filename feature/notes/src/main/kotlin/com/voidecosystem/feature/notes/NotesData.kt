@@ -49,7 +49,7 @@ abstract class NoteDatabase : RoomDatabase() {
                     context.applicationContext,
                     NoteDatabase::class.java,
                     "void-notes.db",
-                ).fallbackToDestructiveMigration(dropAllTables = true).build().also { instance = it }
+                ).fallbackToDestructiveMigration().build().also { instance = it }
             }
     }
 }
